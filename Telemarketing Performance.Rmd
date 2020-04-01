@@ -1,0 +1,122 @@
+---
+title: 'Telemarketing Performance for Long-Term Deposit Sales'
+output: html_document
+---
+```{r, message=FALSE}
+library(readr)
+library(caret)
+```
+
+```{r, message=FALSE}
+bank <- read_delim("bank.csv", ";", escape_double = FALSE, trim_ws = TRUE)
+```
+
+```{r}
+levels(as.factor(bank$education))
+summary(bank$age)
+```
+
+```{r}
+bank$y <- as.factor(bank$y)
+set.seed(1234)
+train <- sample(nrow(bank), 0.9 * nrow(bank))
+bank_train <- bank[train, ]
+bank_test <- bank[-train, ]
+```
+
+```{r}
+get_accuracy<-function(model){
+  pred<-predict(model,bank_test)
+  table<-table(pred,bank_test$y)
+  sum(diag(table))/sum(table)
+}
+```
+
+**Train the data with basic glm**
+
+```{r}
+cv_5 <- trainControl(method = "cv", number = 5)
+```
+
+
+**Performance**
+
+
+```{r}
+set.seed(1234)
+fit.logit <- train(y ~ .,
+data = bank_train,
+method = "glm",
+trControl = cv_5)
+```
+
+```{r}
+set.seed(1234)
+fit.gbm<-train(y~.,data=bank_train,method="gbm",trControl=cv_5,verbose=FALSE)
+```
+
+```{r}
+set.seed(1234)
+fit.rf<-train(y~.,data=bank_train,method="rf",trControl=cv_5)
+```
+
+```{r, message=FALSE, warning=FALSE}
+set.seed(1234)
+fit.xgb<-train(y~.,data=bank_train,method="xgbTree",trControl=cv_5)
+```
+
+```{r}
+set.seed(1234)
+fit.rpart<-train(y~.,data=bank_train,method="rpart",trControl=cv_5)
+```
+
+```{r}
+set.seed(1234)
+fit.knn<-train(y~.,data=bank_train,method="knn",trControl=cv_5)
+```
+
+```{r}
+set.seed(1234)
+fit.lda<-train(y~.,data=bank_train,method="lda",trControl=cv_5)
+```
+
+
+```{r}
+get_accuracy(fit.logit)
+get_accuracy(fit.gbm)
+get_accuracy(fit.rf)
+get_accuracy(fit.xgb)
+get_accuracy(fit.knn)
+get_accuracy(fit.rpart)
+get_accuracy(fit.lda)
+```
+
+```{r, eval=FALSE, include=FALSE}
+score<-numeric(16)
+for (i in 1:16){
+  set.seed(1234)
+  fit<-train(y~.,data=bank_train[,-i],method="gbm",trControl=cv_5,verbose=FALSE)
+  score[i]<-get_accuracy(fit)
+}
+```
+
+```{r}
+library(ggplot2)
+ggplot(bank, aes(duration, fill = y)) + geom_histogram(binwidth = 25) + ggtitle("Telemarketing Phone Call Duration Distribution")
+```
+
+```{r}
+library(vcd)
+mosaic(~marital + loan + y, data = bank,
+  main = "XXX", shade = TRUE, legend = TRUE)
+```
+
+
+```{r}
+library(rpart)
+library(rpart.plot)
+rpart.plot(fit.rpart$finalModel)
+```
+
+
+
